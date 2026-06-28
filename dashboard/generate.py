@@ -66,83 +66,132 @@ def _cluster_cards(clusters, cluster_freq):
         )
     return out
 
-def _xkw_cards(x_posts_raw, kw_acc):
-    acc_map={a["キーワード"]:a for a in kw_acc}
-    # 直近投稿からキーワードを収集
-    seen={}
-    for p in (x_posts_raw or [])[:5]:
-        ai_hint=p.get("AI推定示唆","")
-        dt=p.get("投稿日時","")
-        hint_kw=p.get("示唆キーワード","")
-        for kw in p.get("全キーワード","").split(","):
-            kw=kw.strip()
-            if not kw or kw in seen: continue
-            seen[kw]={"ai_hint":ai_hint,"date":dt,"hint_kw":hint_kw}
-    # X投稿がなければ過去の的中率データからカード生成
-    if not seen:
-        if not kw_acc:
-            return '<div class="empty">Xデータがありません。X連携が設定されると自動収集されます。</div>'
-        out='<div style="font-size:0.75rem;color:#6b7280;margin-bottom:12px">過去の示唆キーワード実績（X投稿データなし）</div>'
-        for a in kw_acc[:8]:
-            kw=a["キーワード"]; rate=a.get("的中率_推定","—")
-            total=int(a.get("合計",0)); hits=int(a.get("的中回数",0))
-            out+=_single_xkw_card(kw,"",rate,total,hits,"","")
-        return out
-    out=""
-    for kw,info in list(seen.items())[:10]:
-        acc=acc_map.get(kw,{})
-        rate=acc.get("的中率_推定","—"); total=int(acc.get("合計",0)); hits=int(acc.get("的中回数",0))
-        out+=_single_xkw_card(kw,info.get("ai_hint",""),rate,total,hits,
-                               info.get("date",""),info.get("hint_kw",""))
-    return out or '<div class="empty">Xキーワードがありません</div>'
-
-def _single_xkw_card(kw, ai_hint, rate, total, hits, date_str, hint_kw):
-    # 推論ロジック
+def _kw_reasoning(kw):
     m=re.search(r"\d+",kw)
     if "末尾" in kw:
         tail=m.group() if m else "?"
-        reasoning=f"Xで「{kw}」という示唆が発信 → 末尾{tail}の台番号（{tail}, 1{tail}, 2{tail}...）に高設定が集中している可能性"
-        recommendation=f"末尾{tail}の台を優先して確認。スコア表の末尾{tail}フィルタと照合を推奨"
-    elif any(w in kw for w in ["全台","全○","全◯","全6","全5"]):
-        reasoning=f"「{kw}」示唆が発信 → 店内の複数機種・複数台で高設定が広範に投入されている可能性"
-        recommendation="1機種に絞らず複数機種を横断して確認。当日の動向に注目"
-    elif any(w in kw for w in ["高設定","456","設定5","設定6","上位"]):
-        reasoning=f"「{kw}」示唆が発信 → 今日は通常より高設定の比率が高い可能性。スコア上位台が当たりやすい"
-        recommendation="高設定候補スコアが高い台を積極的に狙う戦略が有効"
-    elif any(w in kw for w in ["機種名","イベント"]):
-        reasoning=f"機種・イベント系の示唆「{kw}」が発信 → 特定機種への設定集中、またはイベントに紐づく高設定投入の可能性"
-        recommendation="該当機種・イベント関連台を優先的にチェック"
-    else:
-        reasoning=f"「{kw}」という示唆が発信 → このキーワードが出た翌日の実績と照合して判断"
-        recommendation="過去の的中実績と照合して投資判断を行うことを推奨"
-    if total>0:
-        past_info=f"過去{total}回中{hits}回的中（的中率 {rate}）"
-        rate_val=hits/total if total>0 else 0
-        conf_color="#e74c3c" if rate_val>=0.6 else "#e67e22" if rate_val>=0.3 else "#6b7280"
-        conf_label="高精度 ✓" if rate_val>=0.6 else "参考値" if rate_val>=0.3 else "低精度"
-    else:
-        past_info="照合データ蓄積中（初回または最近の示唆）"
-        conf_color="#6b7280"; conf_label="蓄積中"
-    ai_section=('<div style="background:#1a1040;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:0.78rem;color:#c4b5fd">🤖 AI解釈: '+ai_hint+'</div>') if ai_hint else ""
-    date_label=('<span style="font-size:0.68rem;color:#4b5563"> | '+date_str[:10]+'</span>') if date_str else ""
-    return (
-        '<div style="background:#1a1a3a;border:1px solid #2d2d5a;border-radius:14px;padding:14px;margin-bottom:12px">'
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
-        '<span class="badge purple" style="font-size:0.8rem;padding:4px 10px">'+kw+'</span>'
-        '<span style="font-size:0.72rem;font-weight:700;color:'+conf_color+'">'+conf_label+date_label+'</span>'
-        '</div>'
-        +ai_section+
-        '<div style="background:#111830;border-left:3px solid #7c3aed;padding:10px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
-        '<div style="font-size:0.7rem;color:#a78bfa;font-weight:700;margin-bottom:4px">🔍 このキーワードからわかること</div>'
-        '<div style="font-size:0.8rem;color:#d1d5db;line-height:1.55">'+reasoning+'</div>'
-        '</div>'
-        '<div style="background:#0f1a10;border-left:3px solid #34d399;padding:8px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
-        '<div style="font-size:0.7rem;color:#34d399;font-weight:700;margin-bottom:3px">⭐ 推奨アクション</div>'
-        '<div style="font-size:0.78rem;color:#86efac;line-height:1.5">'+recommendation+'</div>'
-        '</div>'
-        '<div style="font-size:0.7rem;color:#4b5563">📊 '+past_info+'</div>'
-        '</div>'
-    )
+        return (f"末尾{tail}の台番号（{tail}, 1{tail}, 2{tail}...）に高設定が集中している可能性",
+                f"末尾{tail}の台を優先確認")
+    if any(w in kw for w in ["全台","全○","全◯","全6","全5"]):
+        return ("店内の複数機種・複数台で広く高設定が投入されている可能性",
+                "複数機種を横断して広く確認。絞らず全体を見る")
+    if any(w in kw for w in ["高設定","456","設定5","設定6","上位"]):
+        return ("今日は通常より高設定の投入率が高い可能性",
+                "スコア上位台を積極的に狙う戦略が有効")
+    if any(w in kw for w in ["ジャグラー","マイジャグ","アイム","ファンキー","ゴーゴー"]):
+        return ("ジャグラー系機種への設定集中の示唆",
+                "ジャグラー系台のREG確率を重点チェック")
+    if any(w in kw for w in ["イベント","感謝","周年"]):
+        return ("イベントに紐づいた高設定投入が期待できる",
+                "イベント関連機種・台を優先的に確認")
+    if any(w in kw for w in ["据え","据置","継続"]):
+        return ("前日の高設定台がそのまま据え置かれている可能性",
+                "前日高設定候補だった台を継続して確認")
+    return (f"「{kw}」に関連する台の傾向を確認",
+            "過去の的中実績と照合して判断")
+
+def _xkw_cards(x_posts_raw, kw_acc):
+    acc_map={a["キーワード"]:a for a in kw_acc}
+    posts=[p for p in (x_posts_raw or []) if p.get("本文","").strip() or p.get("全キーワード","").strip()]
+
+    # X投稿がない場合は過去実績カードにフォールバック
+    if not posts:
+        if not kw_acc:
+            return '<div class="empty">Xデータがありません。data/x_posts/にCSVを追加、またはX API連携を設定してください。</div>'
+        out='<div style="font-size:0.73rem;color:#6b7280;margin-bottom:12px;padding:8px 12px;background:#111;border-radius:8px">📌 X投稿未取得のため、過去の示唆キーワード実績を表示しています</div>'
+        for a in kw_acc[:8]:
+            kw=a["キーワード"]; total=int(a.get("合計",0)); hits=int(a.get("的中回数",0))
+            rate=a.get("的中率_推定","—")
+            reasoning,rec=_kw_reasoning(kw)
+            rate_val=hits/total if total>0 else 0
+            conf_color="#e74c3c" if rate_val>=0.6 else "#e67e22" if rate_val>=0.3 else "#6b7280"
+            out+=(
+                '<div style="background:#1a1a3a;border:1px solid #2d2d5a;border-radius:12px;padding:12px;margin-bottom:10px">'
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                '<span class="badge purple">'+kw+'</span>'
+                '<span style="font-size:0.72rem;color:'+conf_color+';font-weight:700">的中率 '+rate+' ('+str(total)+'回)</span>'
+                '</div>'
+                '<div style="font-size:0.78rem;color:#d1d5db;margin-bottom:6px">🔍 '+reasoning+'</div>'
+                '<div style="font-size:0.75rem;color:#86efac">⭐ '+rec+'</div>'
+                '</div>'
+            )
+        return out
+
+    # 投稿本文ベースのカード（1投稿 = 1カード）
+    out=""
+    for p in posts[:8]:
+        text=p.get("本文","").strip()
+        dt=str(p.get("投稿日時",""))[:10]
+        ai_hint=p.get("AI推定示唆","").strip()
+        all_kws=[k.strip() for k in p.get("全キーワード","").split(",") if k.strip()]
+
+        # キーワードごとに推論を生成（重複タイプは1つに集約）
+        reasonings=[]; recs=[]; seen_types=set()
+        for kw in all_kws:
+            reasoning,rec=_kw_reasoning(kw)
+            # タイプ判定
+            if "末尾" in kw: t="末尾"
+            elif any(w in kw for w in ["全台","全○","全◯"]): t="全台"
+            elif any(w in kw for w in ["高設定","456","設定5","設定6"]): t="高設定"
+            elif any(w in kw for w in ["ジャグラー","マイジャグ","アイム","ファンキー"]): t="ジャグラー"
+            elif any(w in kw for w in ["イベント","感謝","周年"]): t="イベント"
+            elif any(w in kw for w in ["据え","据置","継続"]): t="据え置き"
+            else: t=kw
+            if t not in seen_types:
+                reasonings.append("• "+reasoning)
+                recs.append(rec)
+                seen_types.add(t)
+
+        # 最も的中率の高いキーワードの実績を表示
+        best_acc={}; best_rate=0
+        for kw in all_kws:
+            a=acc_map.get(kw,{})
+            total=int(a.get("合計",0)); hits=int(a.get("的中回数",0))
+            if total>0 and hits/total>best_rate:
+                best_acc=a; best_rate=hits/total
+
+        kw_badges="".join('<span class="badge purple" style="margin-right:4px">'+kw+'</span>' for kw in all_kws)
+        text_html=(
+            '<div style="background:#111828;border-radius:8px;padding:10px 12px;margin-bottom:10px">'
+            '<div style="font-size:0.65rem;color:#6b7280;margin-bottom:5px">🐦 X投稿内容</div>'
+            '<div style="font-size:0.88rem;color:#f0f0ff;line-height:1.65;white-space:pre-wrap">'+text+'</div>'
+            '</div>'
+        ) if text else ""
+        ai_html=(
+            '<div style="background:#1a1040;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:0.78rem;color:#c4b5fd">'
+            '🤖 AI解釈: '+ai_hint+'</div>'
+        ) if ai_hint else ""
+        reasoning_html=(
+            '<div style="background:#111830;border-left:3px solid #7c3aed;padding:10px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
+            '<div style="font-size:0.7rem;color:#a78bfa;font-weight:700;margin-bottom:6px">🔍 この投稿からわかること</div>'
+            '<div style="font-size:0.8rem;color:#d1d5db;line-height:1.6">'+"<br>".join(reasonings)+'</div>'
+            '</div>'
+        ) if reasonings else ""
+        rec_html=(
+            '<div style="background:#0f1a10;border-left:3px solid #34d399;padding:8px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
+            '<div style="font-size:0.7rem;color:#34d399;font-weight:700;margin-bottom:3px">⭐ 推奨アクション</div>'
+            '<div style="font-size:0.78rem;color:#86efac;line-height:1.5">'+"  /  ".join(dict.fromkeys(recs))+'</div>'
+            '</div>'
+        ) if recs else ""
+        if best_acc:
+            total=int(best_acc.get("合計",0)); hits=int(best_acc.get("的中回数",0))
+            rate=best_acc.get("的中率_推定","—"); bkw=best_acc.get("キーワード","")
+            rv=hits/total if total>0 else 0
+            cc="#e74c3c" if rv>=0.6 else "#e67e22" if rv>=0.3 else "#6b7280"
+            acc_html='<div style="font-size:0.7rem;color:'+cc+'">📊 「'+bkw+'」過去的中率: '+rate+' ('+str(total)+'回中'+str(hits)+'回的中)</div>'
+        else:
+            acc_html='<div style="font-size:0.7rem;color:#4b5563">📊 照合データ蓄積中</div>'
+
+        out+=(
+            '<div style="background:#1a1a3a;border:1px solid #2d2d5a;border-radius:14px;padding:14px;margin-bottom:14px">'
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:6px">'
+            '<div style="display:flex;flex-wrap:wrap;gap:4px">'+kw_badges+'</div>'
+            '<span style="font-size:0.68rem;color:#4b5563">📅 '+dt+'</span>'
+            '</div>'
+            +text_html+ai_html+reasoning_html+rec_html+acc_html+
+            '</div>'
+        )
+    return out or '<div class="empty">Xキーワードがありません</div>'
 
 def _target_cards(targets, prefix):
     if not targets:

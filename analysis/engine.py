@@ -506,7 +506,8 @@ def run(records, x_posts, cfg):
         "today_targets_sumasuro":targets_s,
         "x_suggestion_matches":matches,"keyword_accuracy":kw_acc,
         # X投稿生データ（ダッシュボード推論表示用）
-        "x_posts_raw":[{"投稿日時":p.get("投稿日時",""),"示唆キーワード":p.get("示唆キーワード",""),
+        "x_posts_raw":[{"投稿日時":p.get("投稿日時",""),"本文":p.get("本文",""),
+                         "示唆キーワード":p.get("示唆キーワード",""),
                          "AI推定示唆":p.get("AI推定示唆",""),"全キーワード":p.get("全キーワード","")}
                         for p in (x_posts or [])[:10]],
         "cluster_frequency":cluster_frequency(df),

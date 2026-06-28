@@ -41,6 +41,7 @@ def fetch_x_posts(username, days=7):
             results.append({
                 "投稿日時":tw.get("created_at",""),
                 "投稿URL":f"https://x.com/{username}/status/{tw['id']}",
+                "本文":text,
                 "示唆キーワード":",".join(kws),"OCRキーワード":"",
                 "AI推定示唆":_ai_suggest(text),"全キーワード":",".join(kws),
             })
@@ -64,9 +65,12 @@ def load_x_csv(hall_data_dir):
                 note=str(row.get("メモ",row.get("note",""))).strip()
                 if not url: continue
                 kws=list({k for _,k in extract_keywords(note)})
-                records.append({"投稿日時":dt,"投稿URL":url,
+                records.append({
+                    "投稿日時":dt,"投稿URL":url,
+                    "本文":note,
                     "示唆キーワード":",".join(kws),"OCRキーワード":"",
                     "AI推定示唆":_ai_suggest(note) if note else "",
-                    "全キーワード":",".join(kws)})
+                    "全キーワード":",".join(kws),
+                })
         except Exception as e: logger.error(f"X CSV読込エラー: {e}")
     logger.info(f"X手動CSV: {len(records)}件"); return records
