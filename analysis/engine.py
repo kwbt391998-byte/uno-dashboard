@@ -133,12 +133,43 @@ def cluster_analysis(df):
         is_ev=bool(grp["イベント日"].any()) if "イベント日" in grp.columns else False
         for c in clusters:
             kind="2台並び" if len(c)==2 else "3台並び" if len(c)==3 else "島"
+            # 各台番号の差枚を取得
+            machine_diffs={}
+            for num in c:
+                m_rows=grp[grp["台番号数値"]==num]
+                if not m_rows.empty and "差枚" in m_rows.columns:
+                    d=m_rows["差枚"].sum()
+                    machine_diffs[str(num)]=int(d) if pd.notna(d) else None
             e={"日付":date_str,"機種名":model,"台番号":str(c),"台数":len(c),
-               "種類":kind,"イベント日":is_ev,"注記":"AI推定"}
+               "種類":kind,"イベント日":is_ev,"台番号差枚":machine_diffs,"注記":"AI推定"}
             if len(c)==2: results["2台並び"].append(e)
             elif len(c)==3: results["3台並び"].append(e)
             else: results["島"].append(e)
     return results
+
+def model_machine_detail(df):
+    """機種×台番号別累計集計（機種名クリック展開用）"""
+    if df.empty: return {}
+    agg={"累計差枚":("差枚","sum"),"高設定候補回数":("高設定候補フラグ","sum"),
+         "稼働日数":("日付","nunique"),"勝率":("勝利フラグ","mean"),"総G数":("G数","sum")}
+    if "RB" in df.columns: agg["総RB"]=("RB","sum")
+    pm=df.groupby(["機種名","台番号","末尾","ジャグラー系"]).agg(**agg).reset_index()
+    pm["累計差枚"]=pm["累計差枚"].fillna(0).round(0).astype(int)
+    pm["高設定候補回数"]=pm["高設定候補回数"].astype(int)
+    pm["稼働日数"]=pm["稼働日数"].astype(int)
+    result={}
+    for model,grp in pm.groupby("機種名"):
+        is_j=bool(grp["ジャグラー系"].any())
+        rows=[]
+        for _,row in grp.sort_values("累計差枚",ascending=False).iterrows():
+            rec={"台番号":str(row["台番号"]),"末尾":str(row["末尾"]) if pd.notna(row["末尾"]) else "—",
+                 "累計差枚":int(row["累計差枚"]),"高設定候補回数":int(row["高設定候補回数"]),
+                 "稼働日数":int(row["稼働日数"]),"勝率":round(float(row["勝率"])*100,1)}
+            if is_j and "総RB" in row.index and row.get("総RB",0)>0 and row.get("総G数",0)>0:
+                rec["累計REG"]=f"1/{round(row['総G数']/row['総RB'],0):.0f}"
+            rows.append(rec)
+        result[model]=rows
+    return result
 
 def cluster_frequency(df):
     if df.empty: return {}
@@ -511,6 +542,7 @@ def run(records, x_posts, cfg):
                          "AI推定示唆":p.get("AI推定示唆",""),"全キーワード":p.get("全キーワード","")}
                         for p in (x_posts or [])[:10]],
         "cluster_frequency":cluster_frequency(df),
+        "model_machine_detail":model_machine_detail(df),
         # スマスロ
         "store":store_summary(_sdf(df) if not _sdf(df).empty else df),
         "models":model_analysis(_sdf(df) if not _sdf(df).empty else df),

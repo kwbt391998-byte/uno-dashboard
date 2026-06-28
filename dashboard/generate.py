@@ -43,7 +43,18 @@ def _cluster_cards(clusters, cluster_freq):
             implication="単台狙いより島全体で複数台プレイした方が高設定に当たりやすい状況"
         freq_text=f"過去{freq_count}回発生"+(f"（うちイベント日{freq_ev}回）" if freq_ev>0 else "")
         ev_badge='<span style="font-size:0.65rem;background:#3a2000;color:#fb923c;padding:2px 6px;border-radius:8px;margin-left:6px">🎉 イベント日</span>' if is_ev else ""
-        num_badges="".join('<span style="background:#1e3a5f;color:#60a5fa;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;margin-right:4px">'+n.strip()+'</span>' for n in nums.strip("[]").split(",") if n.strip())
+        machine_diffs=c.get("台番号差枚",{})
+        num_badges=""
+        for n in [x.strip() for x in nums.strip("[]").split(",") if x.strip()]:
+            diff=machine_diffs.get(n,None)
+            if diff is not None:
+                dc="#4ade80" if diff>0 else "#f87171"
+                ds=("+"+str(diff)) if diff>0 else str(diff)
+                num_badges+=('<span style="display:inline-flex;align-items:center;gap:3px;background:#1e3a5f;border-radius:6px;padding:2px 7px;margin-right:4px;margin-bottom:4px">'
+                    '<span style="color:#60a5fa;font-size:0.75rem;font-weight:700">'+n+'</span>'
+                    '<span style="color:'+dc+';font-size:0.68rem">'+ds+'</span></span>')
+            else:
+                num_badges+='<span style="background:#1e3a5f;color:#60a5fa;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;margin-right:4px;margin-bottom:4px">'+n+'</span>'
         out+=(
             '<div style="background:#1a1a3a;border:1px solid #2d2d5a;border-radius:14px;padding:14px;margin-bottom:12px">'
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
@@ -193,6 +204,123 @@ def _xkw_cards(x_posts_raw, kw_acc):
         )
     return out or '<div class="empty">Xキーワードがありません</div>'
 
+def _date_prediction(targets_all, targets_j, targets_s, x_posts_raw):
+    today=datetime.now()
+    wd=["月","火","水","木","金","土","日"][today.weekday()]
+    date_str=today.strftime(f"%Y年%m月%d日（{wd}）")
+    # X示唆から末尾候補を抽出
+    tail_hints={}
+    for p in (x_posts_raw or []):
+        text=p.get("本文",""); kws=p.get("全キーワード","").split(",")
+        for kw in kws:
+            kw=kw.strip()
+            if "末尾" in kw:
+                m=re.search(r"\d+",kw)
+                if m and m.group() not in tail_hints:
+                    tail_hints[m.group()]={"kw":kw,"text":text[:40]}
+    # 総合top5
+    top5=[]; seen=set()
+    for t in (targets_all or []):
+        mno=t.get("台番号","")
+        if mno and mno not in seen: seen.add(mno); top5.append(t)
+        if len(top5)>=5: break
+    # ジャグラーtop3
+    top3j=[]; seen_j=set()
+    for t in (targets_j or []):
+        mno=t.get("台番号","")
+        if mno and mno not in seen_j: seen_j.add(mno); top3j.append(t)
+        if len(top3j)>=3: break
+    # スマスロtop3
+    top3s=[]; seen_s=set()
+    for t in (targets_s or []):
+        mno=t.get("台番号","")
+        if mno and mno not in seen_s: seen_s.add(mno); top3s.append(t)
+        if len(top3s)>=3: break
+    medals=["🥇","🥈","🥉","4位","5位"]
+    def diff_html(t):
+        diff=t.get("累計差枚","")
+        if diff=="": return ""
+        ds=("+"+str(diff)) if isinstance(diff,int) and diff>0 else str(diff)
+        dc="#4ade80" if isinstance(diff,int) and diff>0 else "#f87171"
+        return f'<span style="font-size:0.7rem;color:{dc}">{ds}枚</span>'
+    x_hint_html=""
+    if tail_hints:
+        x_hint_html='<div style="background:#1a1040;border-left:3px solid #7c3aed;padding:10px 12px;border-radius:0 10px 10px 0;margin-bottom:12px"><div style="font-size:0.7rem;color:#a78bfa;font-weight:700;margin-bottom:6px">🐦 X示唆から</div>'
+        for tail,info in tail_hints.items():
+            nums_str=", ".join([tail]+[str(i)+tail for i in range(1,10)])
+            x_hint_html+=(f'<div style="margin-bottom:8px"><span class="badge purple">末尾{tail}示唆</span>'
+                f'<span style="font-size:0.72rem;color:#9ca3af;margin-left:6px">「{info["text"]}」</span>'
+                f'<div style="font-size:0.73rem;color:#c4b5fd;margin-top:4px;margin-left:2px">候補台番号: {nums_str}...</div></div>')
+        x_hint_html+='</div>'
+    total_html=""
+    for i,t in enumerate(top5):
+        score=t.get("スコア_推定",0)
+        total_html+=(f'<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1e1e3a">'
+            f'<div style="font-size:1.1rem;min-width:26px">{medals[i]}</div>'
+            f'<div style="flex:1;min-width:0">'
+            f'<div style="font-size:0.92rem;font-weight:700;color:#fff">台番号 <span style="color:#60a5fa;font-size:1.05rem">{t.get("台番号","")}</span>'
+            f' <span style="font-size:0.78rem;color:#9ca3af">{t.get("機種名","")}</span></div>'
+            f'<div style="font-size:0.7rem;color:#6b7280;margin-top:2px">{t.get("根拠","")}</div></div>'
+            f'<div style="text-align:right;flex-shrink:0"><div style="font-size:0.75rem;color:#f59e0b">{t.get("期待度","")}</div>'
+            +diff_html(t)+'</div></div>')
+    mini_list=lambda items,color: "".join(
+        f'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1e1e3a">'
+        f'<div><span style="color:{color};font-weight:700;font-size:0.88rem">台番号 {t.get("台番号","")}</span>'
+        f' <span style="font-size:0.7rem;color:#9ca3af">{t.get("機種名","")}</span></div>'
+        +diff_html(t)+'</div>' for t in items)
+    return (
+        '<div style="background:#1a1a3a;border:2px solid #7c3aed;border-radius:16px;padding:16px;margin-bottom:16px">'
+        '<div style="font-size:0.72rem;color:#6b7280;margin-bottom:3px">📅 本日のAI予測</div>'
+        '<div style="font-size:1.05rem;font-weight:800;color:#fff;margin-bottom:14px">'+date_str+' の台番号予測</div>'
+        +x_hint_html+
+        '<div style="font-size:0.72rem;color:#a78bfa;font-weight:700;margin-bottom:6px;border-bottom:1px solid #2d2d5a;padding-bottom:4px">🎯 総合スコアランキング</div>'
+        +(total_html or '<div class="empty">データなし</div>')+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">'
+        '<div><div style="font-size:0.72rem;color:#fb923c;font-weight:700;margin-bottom:6px">🎰 ジャグラーTop3</div>'
+        +(mini_list(top3j,"#fb923c") or '<div style="font-size:0.73rem;color:#4b5563">データなし</div>')+
+        '</div><div><div style="font-size:0.72rem;color:#60a5fa;font-weight:700;margin-bottom:6px">💻 スマスロTop3</div>'
+        +(mini_list(top3s,"#60a5fa") or '<div style="font-size:0.73rem;color:#4b5563">データなし</div>')+
+        '</div></div></div>'
+    )
+
+def _model_win_rows_with_detail(model_wins, mmd, prefix, extra_key=""):
+    rows=""
+    for i,m in enumerate(model_wins[:20]):
+        model_name=m.get("機種名",""); det_id=f"{prefix}-d{i}"
+        extra_td=f'<td>{m.get(extra_key,"")}</td>' if extra_key else ''
+        rows+=(
+            f'<tr style="cursor:pointer" onclick="toggleDet(\'{det_id}\')">'
+            f'<td><span id="arr-{det_id}" style="font-size:0.65rem;margin-right:3px;display:inline-block">▶</span>{model_name}</td>'
+            f'<td>{m.get("設置台数","")}</td><td>{m.get("勝率_推定","")}</td>'
+            f'<td>{m.get("プラス台数","")}</td><td>{m.get("マイナス台数","")}</td>'
+            f'<td>{m.get("総差枚","")}</td>'+extra_td+f'<td>{m.get("期待度","")}</td></tr>'
+        )
+        machines=mmd.get(model_name,[])
+        mach_rows=""
+        for mach in machines[:15]:
+            diff=mach.get("累計差枚",0)
+            dc="#4ade80" if diff>0 else "#f87171"
+            ds=("+"+str(diff)) if diff>0 else str(diff)
+            reg=mach.get("累計REG","")
+            mach_rows+=(f'<tr><td>{mach.get("台番号","")}</td><td>末尾{mach.get("末尾","")}</td>'
+                f'<td style="color:{dc}">{ds}枚</td><td>{mach.get("高設定候補回数","0")}回/{mach.get("稼働日数","0")}日</td>'
+                f'<td>{mach.get("勝率",0)}%</td>'+(f'<td style="font-size:0.72rem">{reg}</td>' if reg else '')+'</tr>')
+        has_reg=any("累計REG" in mm for mm in machines[:3])
+        ncols=7+(1 if extra_key else 0)
+        rows+=(
+            f'<tr id="{det_id}" style="display:none">'
+            f'<td colspan="{ncols}" style="padding:0">'
+            '<div style="background:#0a0a1a;padding:10px 14px;border-bottom:1px solid #2d2d5a">'
+            f'<div style="font-size:0.7rem;color:#a78bfa;font-weight:700;margin-bottom:8px">🔢 {model_name} — 台番号別ランキング（累計差枚順）</div>'
+            '<div style="overflow-x:auto"><table class="tbl" style="min-width:280px"><thead><tr>'
+            '<th>台番号</th><th>末尾</th><th>累計差枚</th><th>高設定候補</th><th>勝率</th>'
+            +('<th>累計REG</th>' if has_reg else '')+
+            '</tr></thead><tbody>'
+            +(mach_rows or '<tr><td colspan=5 class="empty">データなし</td></tr>')+
+            '</tbody></table></div></div></td></tr>'
+        )
+    return rows
+
 def _target_cards(targets, prefix):
     if not targets:
         return '<div class="empty">CSVをアップロードするとここに表示されます</div>'
@@ -246,6 +374,7 @@ def generate_html(r):
     kw_acc=r.get("keyword_accuracy",[])
     x_posts_raw=r.get("x_posts_raw",[])
     cluster_freq=r.get("cluster_frequency",{})
+    mmd=r.get("model_machine_detail",{})
     j_sum=r.get("juggler_summary",{})
     j_mw=r.get("juggler_model_win",[])
     j_reg=r.get("juggler_reg_ranking",[])
@@ -264,6 +393,9 @@ def generate_html(r):
     weekday_rows="".join("<tr><td>"+w.get("曜日","")+"曜</td><td>"+w.get("高設定候補率_推定","")+"</td><td>"+w.get("期待度","")+"</td></tr>" for w in weekdays)
     cluster_cards=_cluster_cards(clusters, cluster_freq)
     xkw_cards=_xkw_cards(x_posts_raw, kw_acc)
+    date_pred_html=_date_prediction(targets,targets_j,targets_s,x_posts_raw)
+    smw_detail_rows=_model_win_rows_with_detail(sumasuro_mw,mmd,"smw")
+    jmw_detail_rows=_model_win_rows_with_detail(j_mw,mmd,"jmw","累計REG確率")
     acc_rows="".join("<tr><td>"+a.get("キーワード","")+"</td><td>"+a.get("的中率_推定","")+"</td><td>"+str(a.get("合計",""))+"回</td><td>"+a.get("信頼度","")+"</td></tr>" for a in kw_acc[:10])
     j_sum_rows="".join('<tr><td class="k">'+k+'</td><td class="v">'+str(v)+'</td></tr>' for k,v in j_sum.items() if k!="免責")
     j_mw_rows="".join("<tr><td>"+m.get("機種名","")+"</td><td>"+str(m.get("設置台数",""))+"</td><td>"+m.get("勝率_推定","")+"</td><td>"+str(m.get("プラス台数",""))+"</td><td>"+str(m.get("マイナス台数",""))+"</td><td>"+str(m.get("総差枚",""))+"</td><td>"+m.get("累計REG確率","")+"</td><td>"+m.get("期待度","")+"</td></tr>" for m in j_mw[:12])
@@ -282,12 +414,12 @@ def generate_html(r):
         '.header h1{font-size:1.2rem;font-weight:800;color:#fff}'
         '.header p{font-size:0.72rem;color:#a78bfa;margin-top:1px}'
         '.header small{font-size:0.68rem;color:#6b7280}'
-        '.cat-nav{display:flex;gap:0;background:#141428;border-bottom:2px solid #1e1e3a;position:sticky;top:72px;z-index:99}'
+        '.cat-nav{display:flex;gap:0;background:#141428;border-bottom:2px solid #1e1e3a;position:sticky;top:72px;z-index:98}'
         '.cat-btn{flex:1;padding:10px 4px;text-align:center;font-size:0.78rem;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}'
         '.cat-btn.ai.active{color:#a78bfa;border-color:#7c3aed;background:#1a1a3a}'
         '.cat-btn.sm.active{color:#60a5fa;border-color:#2563eb;background:#0f1e3a}'
         '.cat-btn.jg.active{color:#fb923c;border-color:#ea580c;background:#2a1500}'
-        '.subnav{display:none;overflow-x:auto;gap:8px;padding:10px 16px;background:#111120;border-bottom:1px solid #1e1e3a;scrollbar-width:none}'
+        '.subnav{display:none;overflow-x:auto;gap:8px;padding:10px 16px;background:#111120;border-bottom:1px solid #1e1e3a;scrollbar-width:none;position:sticky;top:112px;z-index:97}'
         '.subnav.show{display:flex}'
         '.subnav::-webkit-scrollbar{display:none}'
         '.subnav a{flex-shrink:0;background:#1e1e3a;border:1px solid #2d2d5a;color:#9ca3af;padding:6px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;text-decoration:none;white-space:nowrap}'
@@ -360,6 +492,19 @@ def generate_html(r):
         'a.addEventListener("click",function(e){e.preventDefault();'
         'var cat=this.closest(".subnav").dataset.cat;'
         'switchSub(cat,this.dataset.sub);});});'
+        'function toggleDet(id){'
+        'var el=document.getElementById(id);if(!el)return;'
+        'var show=el.style.display==="none"||el.style.display===""||!el.style.display;'
+        'el.style.display=show?"table-row":"none";'
+        'var arr=document.getElementById("arr-"+id);'
+        'if(arr)arr.textContent=show?"▼":"▶";}'
+        'function updateSticky(){'
+        'var h=document.querySelector(".header");var c=document.querySelector(".cat-nav");'
+        'if(!h||!c)return;'
+        'var hh=h.offsetHeight;c.style.top=hh+"px";'
+        'var ch=c.offsetHeight;'
+        'document.querySelectorAll(".subnav").forEach(function(s){s.style.top=(hh+ch)+"px";});}'
+        'updateSticky();window.addEventListener("resize",updateSticky);'
         'switchCat("ai");'
     )
 
@@ -387,6 +532,7 @@ def generate_html(r):
         # AI予想サブナビ
         '<nav class="subnav ai" id="nav-ai" data-cat="ai">\n'
         '  <a href="#" data-sub="ai-today" class="active">⭐ 総合狙い</a>\n'
+        '  <a href="#" data-sub="ai-predict">🎯 台番号予測</a>\n'
         '  <a href="#" data-sub="ai-jtoday">🎰 ジャグラー狙い</a>\n'
         '  <a href="#" data-sub="ai-stoday">💻 スマスロ狙い</a>\n'
         '  <a href="#" data-sub="ai-xkw">🐦 X示唆KW</a>\n'
@@ -417,6 +563,12 @@ def generate_html(r):
         '<section class="sec ai">\n'
         '  <div class="sec-title">⭐ 今日の狙い台（総合）<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> AI推定</span></div>\n'
         '  '+target_cards_all+'\n'
+        '</section></div>\n'
+
+        '<div class="subsec" id="ai-predict" style="display:none">\n'
+        '<section class="sec ai">\n'
+        '  <div class="sec-title">🎯 台番号予測<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 示唆・傾向から</span></div>\n'
+        '  '+date_pred_html+'\n'
         '</section></div>\n'
 
         '<div class="subsec" id="ai-jtoday" style="display:none">\n'
@@ -464,9 +616,9 @@ def generate_html(r):
 
         '<div class="subsec" id="sm-mwin" style="display:none">\n'
         '<section class="sec sm">\n'
-        '  <div class="sec-title">🏆 スマスロ機種別勝率<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 累計差枚ベース</span></div>\n'
+        '  <div class="sec-title">🏆 スマスロ機種別勝率<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 機種名タップ→台番号展開</span></div>\n'
         '  <table class="tbl sm"><thead><tr><th>機種名</th><th>設置台数</th><th>勝率</th><th>+台数</th><th>-台数</th><th>総差枚</th><th>期待度</th></tr></thead>\n'
-        '  <tbody>'+(smw_rows or '<tr><td colspan=7 class="empty">データなし</td></tr>')+'</tbody></table>\n'
+        '  <tbody>'+(smw_detail_rows or '<tr><td colspan=7 class="empty">データなし</td></tr>')+'</tbody></table>\n'
         '</section></div>\n'
 
         '<div class="subsec" id="sm-mach" style="display:none">\n'
@@ -509,9 +661,9 @@ def generate_html(r):
 
         '<div class="subsec" id="jg-mw" style="display:none">\n'
         '<section class="sec jg">\n'
-        '  <div class="sec-title">🏆 ジャグラー機種別勝率<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 累計差枚ベース</span></div>\n'
+        '  <div class="sec-title">🏆 ジャグラー機種別勝率<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 機種名タップ→台番号展開</span></div>\n'
         '  <table class="tbl jg"><thead><tr><th>機種名</th><th>設置台数</th><th>勝率</th><th>+台数</th><th>-台数</th><th>総差枚</th><th>累計REG</th><th>期待度</th></tr></thead>\n'
-        '  <tbody>'+(j_mw_rows or no8)+'</tbody></table>\n'
+        '  <tbody>'+(jmw_detail_rows or no8)+'</tbody></table>\n'
         '</section></div>\n'
 
         '<div class="subsec" id="jg-reg" style="display:none">\n'
