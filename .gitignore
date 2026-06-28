@@ -7,11 +7,8 @@ service_account.json
 logs/run_*.log
 logs/structured_*.json
 
-# 本番データ（GitHubに上げない）
-data/yuurakucho_uno/*.csv
-data/yuurakucho_uno/x_posts/*.csv
-!data/yuurakucho_uno/sample_data.csv
-!data/yuurakucho_uno/x_posts/sample_posts.csv
+# 機密データのみ除外
+service_account.json
 
 # Python
 __pycache__/
