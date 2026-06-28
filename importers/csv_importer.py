@@ -35,7 +35,7 @@ def _to_float(val):
     except: return None
 
 def _parse_date(val):
-    for fmt in ["%Y-%m-%d","%Y/%m/%d","%m/%d/%Y"]:
+    for fmt in ["%Y-%m-%d","%Y/%m/%d","%m/%d/%Y","%Y%m%d"]:
         try: return datetime.strptime(str(val).strip(),fmt).strftime("%Y-%m-%d")
         except: pass
     return None

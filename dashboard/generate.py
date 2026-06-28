@@ -205,9 +205,10 @@ def _xkw_cards(x_posts_raw, kw_acc):
     return out or '<div class="empty">Xキーワードがありません</div>'
 
 def _date_prediction(targets_all, targets_j, targets_s, x_posts_raw):
-    today=datetime.now()
-    wd=["月","火","水","木","金","土","日"][today.weekday()]
-    date_str=today.strftime(f"%Y年%m月%d日（{wd}）")
+    from datetime import timedelta
+    tomorrow=datetime.now()+timedelta(days=1)
+    wd=["月","火","水","木","金","土","日"][tomorrow.weekday()]
+    date_str=tomorrow.strftime(f"%Y年%m月%d日（{wd}）")
     # X示唆から末尾候補を抽出
     tail_hints={}
     for p in (x_posts_raw or []):
@@ -270,7 +271,7 @@ def _date_prediction(targets_all, targets_j, targets_s, x_posts_raw):
         +diff_html(t)+'</div>' for t in items)
     return (
         '<div style="background:#1a1a3a;border:2px solid #7c3aed;border-radius:16px;padding:16px;margin-bottom:16px">'
-        '<div style="font-size:0.72rem;color:#6b7280;margin-bottom:3px">📅 本日のAI予測</div>'
+        '<div style="font-size:0.72rem;color:#6b7280;margin-bottom:3px">📅 明日のAI予測</div>'
         '<div style="font-size:1.05rem;font-weight:800;color:#fff;margin-bottom:14px">'+date_str+' の台番号予測</div>'
         +x_hint_html+
         '<div style="font-size:0.72rem;color:#a78bfa;font-weight:700;margin-bottom:6px;border-bottom:1px solid #2d2d5a;padding-bottom:4px">🎯 総合スコアランキング</div>'
