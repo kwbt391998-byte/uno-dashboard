@@ -1,0 +1,74 @@
+[
+  {
+    "ts": "2026-06-28T10:10:30.155273",
+    "level": "COMPLIANCE",
+    "step": "COMPLIANCE",
+    "msg": "🚫 manual_only: https://ana-slo.com/",
+    "detail": {
+      "url": "https://ana-slo.com/",
+      "status": "manual_only",
+      "reason": "bot検出(Cloudflare)を実装。自動アクセスをブロックしている。",
+      "alternative": "手動でCSVをdata/yuurakucho_uno/に配置してください"
+    }
+  },
+  {
+    "ts": "2026-06-28T10:10:30.155316",
+    "level": "BLOCKED",
+    "step": "AUTO_SCRAPING",
+    "msg": "自動取得中止: https://ana-slo.com/",
+    "detail": {
+      "reason": "bot検出(Cloudflare)を実装。自動アクセスをブロックしている。",
+      "alternative": "手動でCSVをdata/yuurakucho_uno/に配置してください"
+    }
+  },
+  {
+    "ts": "2026-06-28T10:10:30.155364",
+    "level": "COMPLIANCE",
+    "step": "COMPLIANCE",
+    "msg": "🚫 api_only: https://x.com/",
+    "detail": {
+      "url": "https://x.com/",
+      "status": "api_only",
+      "reason": "X利用規約 Section 2.5 でスクレイピング明示禁止",
+      "alternative": "X API v2(無料枠あり)またはdata/yuurakucho_uno/x_posts/に手動CSV"
+    }
+  },
+  {
+    "ts": "2026-06-28T10:10:30.155396",
+    "level": "BLOCKED",
+    "step": "AUTO_SCRAPING",
+    "msg": "自動取得中止: https://x.com/",
+    "detail": {
+      "reason": "X利用規約 Section 2.5 でスクレイピング明示禁止",
+      "alternative": "X API v2(無料枠あり)またはdata/yuurakucho_uno/x_posts/に手動CSV"
+    }
+  },
+  {
+    "ts": "2026-06-28T10:10:30.707199",
+    "level": "INFO",
+    "step": "CSV_IMPORT",
+    "msg": "14件読み込み"
+  },
+  {
+    "ts": "2026-06-28T10:10:31.281968",
+    "level": "INFO",
+    "step": "X_CSV",
+    "msg": "3件読み込み"
+  },
+  {
+    "ts": "2026-06-28T10:10:31.329812",
+    "level": "INFO",
+    "step": "ANALYSIS",
+    "msg": "完了",
+    "detail": {
+      "record_count": 14,
+      "today_targets": 6
+    }
+  },
+  {
+    "ts": "2026-06-28T10:10:31.332118",
+    "level": "INFO",
+    "step": "DASHBOARD",
+    "msg": "生成完了"
+  }
+]

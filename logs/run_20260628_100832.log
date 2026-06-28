@@ -1,0 +1,24 @@
+2026-06-28 10:08:32,081 [INFO] main: ============================================================
+2026-06-28 10:08:32,081 [INFO] main: 🎰 AIホール分析システム — 有楽町UNO
+2026-06-28 10:08:32,081 [INFO] main:    実行日時: 2026/06/28 10:08
+2026-06-28 10:08:32,081 [INFO] main: ============================================================
+2026-06-28 10:08:32,110 [WARNING] core.compliance: [COMPLIANCE] 🚫 ana-slo.com: manual_only
+2026-06-28 10:08:32,111 [ERROR] runlog: [BLOCKED] AUTO_SCRAPING: https://ana-slo.com/
+2026-06-28 10:08:32,111 [WARNING] core.compliance: [COMPLIANCE] 🚫 x.com: api_only
+2026-06-28 10:08:32,111 [ERROR] runlog: [BLOCKED] AUTO_SCRAPING: https://x.com/
+2026-06-28 10:08:32,111 [INFO] main: 【Step 2】アナスロデータ読み込み
+2026-06-28 10:08:34,674 [INFO] importers.csv_importer: [有楽町UNO] 合計0件
+2026-06-28 10:08:34,674 [INFO] runlog: [CSV_IMPORT] 0件読み込み
+2026-06-28 10:08:34,674 [WARNING] runlog: [CSV_IMPORT] ⚠️ データ0件
+2026-06-28 10:08:34,674 [INFO] main: 【Step 3】X投稿データ取得
+2026-06-28 10:08:35,370 [INFO] importers.x_importer: X手動CSV: 3件
+2026-06-28 10:08:35,370 [INFO] runlog: [X_CSV] 3件読み込み
+2026-06-28 10:08:35,370 [INFO] main: 【Step 4】分析実行
+2026-06-28 10:08:35,370 [WARNING] runlog: [ANALYSIS] ⚠️ データ0件のためスキップ
+2026-06-28 10:08:35,370 [INFO] main: 【Step 5】ダッシュボード生成
+2026-06-28 10:08:35,372 [INFO] runlog: [DASHBOARD] 生成完了
+2026-06-28 10:08:35,372 [INFO] main: SPREADSHEET_ID未設定 → スプレッドシートスキップ
+2026-06-28 10:08:35,373 [INFO] main: ============================================================
+2026-06-28 10:08:35,373 [INFO] main: 実行サマリ: {'COMPLIANCE': 2, 'BLOCKED': 2, 'INFO': 3, 'WARN': 2}
+2026-06-28 10:08:35,373 [WARNING] main: ⚠️  自動取得中止ステップ: ['AUTO_SCRAPING', 'AUTO_SCRAPING']
+2026-06-28 10:08:35,373 [INFO] main: ログ: logs/structured_20260628_100835.json

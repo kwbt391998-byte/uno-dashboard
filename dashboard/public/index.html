@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>🎰 有楽町UNO</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#0f0f1a;color:#e8e8f0;padding-bottom:80px}
+.header{background:linear-gradient(135deg,#1a1a3e,#2d1b69);padding:20px 16px 16px;position:sticky;top:0;z-index:100;border-bottom:2px solid #7c3aed}
+.header h1{font-size:1.3rem;font-weight:800;color:#fff}
+.header p{font-size:0.75rem;color:#a78bfa;margin-top:2px}
+.header small{font-size:0.7rem;color:#6b7280}
+.nav{display:flex;overflow-x:auto;gap:8px;padding:12px 16px;background:#141428;border-bottom:1px solid #1e1e3a;position:sticky;top:88px;z-index:99;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex-shrink:0;background:#1e1e3a;border:1px solid #2d2d5a;color:#a78bfa;padding:8px 14px;border-radius:20px;font-size:0.8rem;font-weight:600;text-decoration:none;white-space:nowrap}
+.nav a.active{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.sec{padding:16px}
+.sec-title{font-size:1.1rem;font-weight:800;color:#a78bfa;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #2d2d5a}
+.card{background:#1a1a3a;border:1px solid #2d2d5a;border-radius:16px;padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.card:active{background:#221a4a}
+.rank{font-size:1.4rem;font-weight:900;color:#7c3aed;min-width:36px}
+.card-main{flex:1;min-width:0}
+.card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.mname{font-size:1rem;font-weight:800;color:#fff}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.badge{font-size:0.72rem;font-weight:700;padding:3px 8px;border-radius:10px}
+.blue{background:#1e3a5f;color:#60a5fa}
+.green{background:#1a3a2a;color:#34d399}
+.purple{background:#3b1a6e;color:#c4b5fd}
+.sub{font-size:0.78rem;color:#9ca3af}
+.chev{font-size:1.4rem;color:#4b5563;align-self:center;transition:transform 0.2s}
+.detail{display:none;background:#111130;border:1px solid #2d2d5a;border-top:none;border-radius:0 0 16px 16px;padding:12px 14px;margin-top:-10px;margin-bottom:10px}
+.detail.open{display:block}
+.reason-label{font-size:0.75rem;color:#6b7280;margin-bottom:4px}
+.reason{font-size:0.85rem;color:#d1d5db;line-height:1.5}
+.tbl{width:100%;border-collapse:collapse;font-size:0.85rem}
+.tbl th{background:#1e1e3a;color:#a78bfa;padding:10px 8px;text-align:left;font-size:0.78rem;font-weight:700;border-bottom:2px solid #2d2d5a;white-space:nowrap}
+.tbl td{padding:10px 8px;border-bottom:1px solid #1e1e3a;color:#e8e8f0}
+.tbl .k{color:#9ca3af;font-size:0.8rem} .tbl .v{font-weight:600;color:#fff}
+.ci{background:#1a1a3a;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:0.85rem;color:#d1d5db}
+.empty{text-align:center;padding:32px;color:#4b5563;font-size:0.9rem}
+.disc{background:#1a1a2e;border:1px solid #2d2d5a;border-radius:12px;padding:12px;font-size:0.72rem;color:#6b7280;margin:16px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎰 有楽町UNO</h1>
+  <p>AIホール分析システム</p>
+  <small>更新: 2026-06-28 10:10</small>
+</div>
+<nav class="nav">
+  <a href="#today" class="active">⭐ 今日の狙い</a>
+  <a href="#store">🏪 店舗全体</a>
+  <a href="#model">🎰 機種別</a>
+  <a href="#machine">🔢 台番号</a>
+  <a href="#suffix">🔢 末尾</a>
+  <a href="#cluster">🔗 並び</a>
+  <a href="#weekday">📅 曜日</a>
+  <a href="#accuracy">📈 的中率</a>
+</nav>
+<section class="sec" id="today">
+  <div class="sec-title">⭐ 今日の狙い台 <span style="font-size:0.75rem;color:#6b7280;font-weight:400">（AI推定）</span></div>
+  <div class="card" onclick="toggle('td1')"><div class="rank">#1</div><div class="card-main"><div class="card-header"><span class="mname">マイジャグラーV</span><span><span style="color:#f59e0b">★★★★</span><span style="color:#374151">☆</span></span></div><div class="badges"><span class="badge blue">台番号 105</span><span class="badge green">末尾5</span><span class="badge" style="background:#e74c3c;color:#fff">スコア 70.0</span></div><div class="sub">勝率 100.0% ／ 高設定候補 2回/2日</div></div><div class="chev">›</div></div><div class="detail" id="td1"><div class="reason-label">🔍 根拠</div><div class="reason">末尾5傾向あり / X示唆「末尾5」</div></div><div class="card" onclick="toggle('td2')"><div class="rank">#2</div><div class="card-main"><div class="card-header"><span class="mname">マイジャグラーV</span><span><span style="color:#f59e0b">★★★</span><span style="color:#374151">☆☆</span></span></div><div class="badges"><span class="badge blue">台番号 103</span><span class="badge green">末尾3</span><span class="badge" style="background:#e67e22;color:#fff">スコア 58.0</span></div><div class="sub">勝率 50.0% ／ 高設定候補 1回/2日</div></div><div class="chev">›</div></div><div class="detail" id="td2"><div class="reason-label">🔍 根拠</div><div class="reason">末尾3傾向あり / X示唆「末尾3」 / 日曜日傾向</div></div><div class="card" onclick="toggle('td3')"><div class="rank">#3</div><div class="card-main"><div class="card-header"><span class="mname">アイムジャグラーEX</span><span><span style="color:#f59e0b">★★★</span><span style="color:#374151">☆☆</span></span></div><div class="badges"><span class="badge blue">台番号 203</span><span class="badge green">末尾3</span><span class="badge" style="background:#e67e22;color:#fff">スコア 58.0</span></div><div class="sub">勝率 50.0% ／ 高設定候補 1回/2日</div></div><div class="chev">›</div></div><div class="detail" id="td3"><div class="reason-label">🔍 根拠</div><div class="reason">末尾3傾向あり / X示唆「末尾3」 / 日曜日傾向</div></div><div class="card" onclick="toggle('td4')"><div class="rank">#4</div><div class="card-main"><div class="card-header"><span class="mname">マイジャグラーV</span><span><span style="color:#f59e0b">★★★</span><span style="color:#374151">☆☆</span></span></div><div class="badges"><span class="badge blue">台番号 101</span><span class="badge green">末尾1</span><span class="badge" style="background:#e67e22;color:#fff">スコア 56.7</span></div><div class="sub">勝率 100.0% ／ 高設定候補 2回/3日</div></div><div class="chev">›</div></div><div class="detail" id="td4"><div class="reason-label">🔍 根拠</div><div class="reason">末尾1傾向あり / X示唆「末尾1」</div></div><div class="card" onclick="toggle('td5')"><div class="rank">#5</div><div class="card-main"><div class="card-header"><span class="mname">北斗の拳 天昇</span><span><span style="color:#f59e0b">★★★</span><span style="color:#374151">☆☆</span></span></div><div class="badges"><span class="badge blue">台番号 401</span><span class="badge green">末尾1</span><span class="badge" style="background:#e67e22;color:#fff">スコア 50.0</span></div><div class="sub">勝率 50.0% ／ 高設定候補 1回/2日</div></div><div class="chev">›</div></div><div class="detail" id="td5"><div class="reason-label">🔍 根拠</div><div class="reason">末尾1傾向あり / X示唆「末尾1」</div></div><div class="card" onclick="toggle('td6')"><div class="rank">#6</div><div class="card-main"><div class="card-header"><span class="mname">アイムジャグラーEX</span><span><span style="color:#f59e0b">★★★</span><span style="color:#374151">☆☆</span></span></div><div class="badges"><span class="badge blue">台番号 201</span><span class="badge green">末尾1</span><span class="badge" style="background:#e67e22;color:#fff">スコア 43.3</span></div><div class="sub">勝率 66.7% ／ 高設定候補 1回/3日</div></div><div class="chev">›</div></div><div class="detail" id="td6"><div class="reason-label">🔍 根拠</div><div class="reason">末尾1傾向あり / X示唆「末尾1」</div></div>
+</section>
+<section class="sec" id="store">
+  <div class="sec-title">🏪 店舗全体集計</div>
+  <table class="tbl"><tbody><tr><td class="k">集計台数</td><td class="v">14</td></tr><tr><td class="k">高設定候補台数</td><td class="v">8</td></tr><tr><td class="k">高設定候補率_推定</td><td class="v">57.1%</td></tr><tr><td class="k">勝率_推定</td><td class="v">71.4%</td></tr><tr><td class="k">期待度</td><td class="v">★★★☆☆</td></tr><tr><td class="k">集計期間</td><td class="v">2026-06-20 ～ 2026-06-22</td></tr></tbody></table>
+</section>
+<section class="sec" id="model">
+  <div class="sec-title">🎰 機種別ランキング</div>
+  <table class="tbl"><thead><tr><th>機種名</th><th>高設定候補率</th><th>期待度</th><th>勝率</th></tr></thead>
+  <tbody><tr><td>マイジャグラーV</td><td>71.4%</td><td>★★★★☆</td><td>85.7%</td></tr><tr><td>アイムジャグラーEX</td><td>40.0%</td><td>★★★☆☆</td><td>60.0%</td></tr><tr><td>北斗の拳 天昇</td><td>50.0%</td><td>★★★☆☆</td><td>50.0%</td></tr></tbody></table>
+</section>
+<section class="sec" id="machine">
+  <div class="sec-title">🔢 台番号別ランキング</div>
+  <table class="tbl"><thead><tr><th>台番号</th><th>機種名</th><th>高設定候補回数</th><th>期待度</th></tr></thead>
+  <tbody><tr><td>101</td><td>マイジャグラーV</td><td>2</td><td>★★★★★</td></tr><tr><td>105</td><td>マイジャグラーV</td><td>2</td><td>★★★★★</td></tr><tr><td>103</td><td>マイジャグラーV</td><td>1</td><td>★★★☆☆</td></tr><tr><td>201</td><td>アイムジャグラーEX</td><td>1</td><td>★★★★☆</td></tr><tr><td>203</td><td>アイムジャグラーEX</td><td>1</td><td>★★★☆☆</td></tr><tr><td>401</td><td>北斗の拳 天昇</td><td>1</td><td>★★★☆☆</td></tr></tbody></table>
+</section>
+<section class="sec" id="suffix">
+  <div class="sec-title">🔢 末尾別分析</div>
+  <table class="tbl"><thead><tr><th>末尾</th><th>高設定候補率</th><th>期待度</th></tr></thead>
+  <tbody><tr><td>末尾1</td><td>50.0%</td><td>★★★☆☆</td></tr><tr><td>末尾3</td><td>50.0%</td><td>★★★☆☆</td></tr><tr><td>末尾5</td><td>100.0%</td><td>★★★★★</td></tr></tbody></table>
+</section>
+<section class="sec" id="cluster">
+  <div class="sec-title">🔗 並び分析</div>
+  <div class="empty">並びパターンなし</div>
+</section>
+<section class="sec" id="weekday">
+  <div class="sec-title">📅 曜日別分析</div>
+  <table class="tbl"><thead><tr><th>曜日</th><th>高設定候補率</th><th>期待度</th></tr></thead>
+  <tbody><tr><td>月曜</td><td>66.7%</td><td>★★★★☆</td></tr><tr><td>土曜</td><td>66.7%</td><td>★★★★☆</td></tr><tr><td>日曜</td><td>40.0%</td><td>★★★☆☆</td></tr></tbody></table>
+</section>
+<section class="sec" id="accuracy">
+  <div class="sec-title">📈 示唆キーワード的中率</div>
+  <table class="tbl"><thead><tr><th>キーワード</th><th>的中率</th><th>回数</th><th>信頼度</th></tr></thead>
+  <tbody><tr><td>末尾5</td><td>100.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>末尾1</td><td>100.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>マイジャグ</td><td>0.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>金</td><td>0.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>ドラゴン</td><td>0.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>全台</td><td>0.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>末尾3</td><td>0.0%</td><td>2回</td><td>低(サンプル少)</td></tr><tr><td>据え</td><td>0.0%</td><td>2回</td><td>低(サンプル少)</td></tr></tbody></table>
+</section>
+<div class="disc">⚠️ ※ 以下はすべてAIによる推定値です。実際の設定を断定するものではありません。</div>
+<script>
+function toggle(id){
+  var el=document.getElementById(id);
+  el.classList.toggle('open');
+  var chev=el.previousElementSibling.querySelector('.chev');
+  if(chev) chev.style.transform=el.classList.contains('open')?'rotate(90deg)':'';
+}
+var secs=document.querySelectorAll('section[id]');
+secs.forEach(function(s){
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        document.querySelectorAll('.nav a').forEach(function(b){b.classList.remove('active');});
+        var t=document.querySelector('.nav a[href="#'+e.target.id+'"]');
+        if(t) t.classList.add('active');
+      }
+    });
+  },{rootMargin:'-40% 0px -55% 0px'}).observe(s);
+});
+</script>
+</body></html>
