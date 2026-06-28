@@ -130,12 +130,39 @@ def cluster_analysis(df):
                 cur=[n]
         if len(cur)>=2: clusters.append(cur)
         date_str=str(date.date()) if hasattr(date,"date") else str(date)
+        is_ev=bool(grp["イベント日"].any()) if "イベント日" in grp.columns else False
         for c in clusters:
-            e={"日付":date_str,"機種名":model,"台番号":str(c),"台数":len(c),"注記":"AI推定"}
+            kind="2台並び" if len(c)==2 else "3台並び" if len(c)==3 else "島"
+            e={"日付":date_str,"機種名":model,"台番号":str(c),"台数":len(c),
+               "種類":kind,"イベント日":is_ev,"注記":"AI推定"}
             if len(c)==2: results["2台並び"].append(e)
             elif len(c)==3: results["3台並び"].append(e)
             else: results["島"].append(e)
     return results
+
+def cluster_frequency(df):
+    if df.empty: return {}
+    freq={}
+    for (date,model),grp in df.groupby(["日付","機種名"]):
+        hi=grp[grp["高設定候補フラグ"]].copy()
+        if len(hi)<2: continue
+        nums=sorted([int(n) for n in hi["台番号数値"].dropna().tolist()])
+        clusters=[]; cur=[nums[0]]
+        for n in nums[1:]:
+            if n-cur[-1]<=2: cur.append(n)
+            else:
+                if len(cur)>=2: clusters.append(cur)
+                cur=[n]
+        if len(cur)>=2: clusters.append(cur)
+        is_ev=bool(grp["イベント日"].any()) if "イベント日" in grp.columns else False
+        for c in clusters:
+            kind="2台並び" if len(c)==2 else "3台並び" if len(c)==3 else "島"
+            key=model+":::"+kind
+            if key not in freq:
+                freq[key]={"機種名":model,"種類":kind,"発生回数":0,"うちイベント日":0}
+            freq[key]["発生回数"]+=1
+            if is_ev: freq[key]["うちイベント日"]+=1
+    return freq
 
 def weekday_analysis(df):
     if df.empty or "曜日" not in df.columns: return []
@@ -478,6 +505,11 @@ def run(records, x_posts, cfg):
         "today_targets_juggler":targets_j,
         "today_targets_sumasuro":targets_s,
         "x_suggestion_matches":matches,"keyword_accuracy":kw_acc,
+        # X投稿生データ（ダッシュボード推論表示用）
+        "x_posts_raw":[{"投稿日時":p.get("投稿日時",""),"示唆キーワード":p.get("示唆キーワード",""),
+                         "AI推定示唆":p.get("AI推定示唆",""),"全キーワード":p.get("全キーワード","")}
+                        for p in (x_posts or [])[:10]],
+        "cluster_frequency":cluster_frequency(df),
         # スマスロ
         "store":store_summary(_sdf(df) if not _sdf(df).empty else df),
         "models":model_analysis(_sdf(df) if not _sdf(df).empty else df),

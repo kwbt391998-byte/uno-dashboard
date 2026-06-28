@@ -1,4 +1,4 @@
-import json, logging
+import json, logging, re
 from datetime import datetime
 from pathlib import Path
 
@@ -14,6 +14,135 @@ def score_color(score):
     if score>=40: return "#e67e22"
     if score>=20: return "#f39c12"
     return "#95a5a6"
+
+def _cluster_cards(clusters, cluster_freq):
+    all_items=[]
+    for kind,items in clusters.items():
+        for c in items:
+            all_items.append(c)
+    if not all_items:
+        return '<div class="empty">並びパターンなし（データ蓄積中）</div>'
+    all_items=sorted(all_items,key=lambda x:x.get("日付",""),reverse=True)
+    out=""
+    for c in all_items[:15]:
+        kind=c.get("種類","—"); model=c.get("機種名",""); nums=c.get("台番号","")
+        date=c.get("日付",""); count=c.get("台数",0); is_ev=c.get("イベント日",False)
+        freq_key=model+":::"+kind
+        freq_info=cluster_freq.get(freq_key,{})
+        freq_count=freq_info.get("発生回数",1)
+        freq_ev=freq_info.get("うちイベント日",0)
+        # 種類別推論
+        if kind=="2台並び":
+            reasoning="隣接する2台に同日・同時に高設定候補が集中 → 機種内の複数台へ意図的に設定を投入している可能性"
+            implication="今後この機種が同条件で出た日は、連番台も合わせて追加確認を推奨"
+        elif kind=="3台並び":
+            reasoning="3台が連番で高設定候補 → 島の過半数に設定が入っている可能性。台を絞らず島全体を視野に入れた方が効率的"
+            implication="このパターンが出た機種は「島丸ごと狙い」の戦略が有効な可能性あり"
+        else:
+            reasoning=f"{count}台以上がまとまって高設定候補 → 1島まるごと高設定投入の可能性（全台開放または大幅な高設定配分）"
+            implication="単台狙いより島全体で複数台プレイした方が高設定に当たりやすい状況"
+        freq_text=f"過去{freq_count}回発生"+(f"（うちイベント日{freq_ev}回）" if freq_ev>0 else "")
+        ev_badge='<span style="font-size:0.65rem;background:#3a2000;color:#fb923c;padding:2px 6px;border-radius:8px;margin-left:6px">🎉 イベント日</span>' if is_ev else ""
+        num_badges="".join('<span style="background:#1e3a5f;color:#60a5fa;padding:2px 7px;border-radius:6px;font-size:0.75rem;font-weight:700;margin-right:4px">'+n.strip()+'</span>' for n in nums.strip("[]").split(",") if n.strip())
+        out+=(
+            '<div style="background:#1a1a3a;border:1px solid #2d2d5a;border-radius:14px;padding:14px;margin-bottom:12px">'
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+            '<span class="badge purple">'+kind+'</span>'
+            '<span style="font-size:0.78rem;color:#9ca3af">'+date+'</span>'
+            +ev_badge+
+            '</div>'
+            '<div style="font-size:0.95rem;font-weight:700;color:#fff;margin-bottom:6px">'+model+'</div>'
+            '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+num_badges+'</div>'
+            '<div style="background:#111830;border-left:3px solid #7c3aed;padding:10px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
+            '<div style="font-size:0.7rem;color:#a78bfa;font-weight:700;margin-bottom:4px">💡 推測</div>'
+            '<div style="font-size:0.8rem;color:#d1d5db;line-height:1.55">'+reasoning+'</div>'
+            '</div>'
+            '<div style="background:#0f1a10;border-left:3px solid #34d399;padding:8px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
+            '<div style="font-size:0.7rem;color:#34d399;font-weight:700;margin-bottom:3px">⭐ 活用方法</div>'
+            '<div style="font-size:0.78rem;color:#86efac;line-height:1.5">'+implication+'</div>'
+            '</div>'
+            '<div style="font-size:0.7rem;color:#4b5563">📊 '+freq_text+'</div>'
+            '</div>'
+        )
+    return out
+
+def _xkw_cards(x_posts_raw, kw_acc):
+    acc_map={a["キーワード"]:a for a in kw_acc}
+    # 直近投稿からキーワードを収集
+    seen={}
+    for p in (x_posts_raw or [])[:5]:
+        ai_hint=p.get("AI推定示唆","")
+        dt=p.get("投稿日時","")
+        hint_kw=p.get("示唆キーワード","")
+        for kw in p.get("全キーワード","").split(","):
+            kw=kw.strip()
+            if not kw or kw in seen: continue
+            seen[kw]={"ai_hint":ai_hint,"date":dt,"hint_kw":hint_kw}
+    # X投稿がなければ過去の的中率データからカード生成
+    if not seen:
+        if not kw_acc:
+            return '<div class="empty">Xデータがありません。X連携が設定されると自動収集されます。</div>'
+        out='<div style="font-size:0.75rem;color:#6b7280;margin-bottom:12px">過去の示唆キーワード実績（X投稿データなし）</div>'
+        for a in kw_acc[:8]:
+            kw=a["キーワード"]; rate=a.get("的中率_推定","—")
+            total=int(a.get("合計",0)); hits=int(a.get("的中回数",0))
+            out+=_single_xkw_card(kw,"",rate,total,hits,"","")
+        return out
+    out=""
+    for kw,info in list(seen.items())[:10]:
+        acc=acc_map.get(kw,{})
+        rate=acc.get("的中率_推定","—"); total=int(acc.get("合計",0)); hits=int(acc.get("的中回数",0))
+        out+=_single_xkw_card(kw,info.get("ai_hint",""),rate,total,hits,
+                               info.get("date",""),info.get("hint_kw",""))
+    return out or '<div class="empty">Xキーワードがありません</div>'
+
+def _single_xkw_card(kw, ai_hint, rate, total, hits, date_str, hint_kw):
+    # 推論ロジック
+    m=re.search(r"\d+",kw)
+    if "末尾" in kw:
+        tail=m.group() if m else "?"
+        reasoning=f"Xで「{kw}」という示唆が発信 → 末尾{tail}の台番号（{tail}, 1{tail}, 2{tail}...）に高設定が集中している可能性"
+        recommendation=f"末尾{tail}の台を優先して確認。スコア表の末尾{tail}フィルタと照合を推奨"
+    elif any(w in kw for w in ["全台","全○","全◯","全6","全5"]):
+        reasoning=f"「{kw}」示唆が発信 → 店内の複数機種・複数台で高設定が広範に投入されている可能性"
+        recommendation="1機種に絞らず複数機種を横断して確認。当日の動向に注目"
+    elif any(w in kw for w in ["高設定","456","設定5","設定6","上位"]):
+        reasoning=f"「{kw}」示唆が発信 → 今日は通常より高設定の比率が高い可能性。スコア上位台が当たりやすい"
+        recommendation="高設定候補スコアが高い台を積極的に狙う戦略が有効"
+    elif any(w in kw for w in ["機種名","イベント"]):
+        reasoning=f"機種・イベント系の示唆「{kw}」が発信 → 特定機種への設定集中、またはイベントに紐づく高設定投入の可能性"
+        recommendation="該当機種・イベント関連台を優先的にチェック"
+    else:
+        reasoning=f"「{kw}」という示唆が発信 → このキーワードが出た翌日の実績と照合して判断"
+        recommendation="過去の的中実績と照合して投資判断を行うことを推奨"
+    if total>0:
+        past_info=f"過去{total}回中{hits}回的中（的中率 {rate}）"
+        rate_val=hits/total if total>0 else 0
+        conf_color="#e74c3c" if rate_val>=0.6 else "#e67e22" if rate_val>=0.3 else "#6b7280"
+        conf_label="高精度 ✓" if rate_val>=0.6 else "参考値" if rate_val>=0.3 else "低精度"
+    else:
+        past_info="照合データ蓄積中（初回または最近の示唆）"
+        conf_color="#6b7280"; conf_label="蓄積中"
+    ai_section=('<div style="background:#1a1040;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:0.78rem;color:#c4b5fd">🤖 AI解釈: '+ai_hint+'</div>') if ai_hint else ""
+    date_label=('<span style="font-size:0.68rem;color:#4b5563"> | '+date_str[:10]+'</span>') if date_str else ""
+    return (
+        '<div style="background:#1a1a3a;border:1px solid #2d2d5a;border-radius:14px;padding:14px;margin-bottom:12px">'
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+        '<span class="badge purple" style="font-size:0.8rem;padding:4px 10px">'+kw+'</span>'
+        '<span style="font-size:0.72rem;font-weight:700;color:'+conf_color+'">'+conf_label+date_label+'</span>'
+        '</div>'
+        +ai_section+
+        '<div style="background:#111830;border-left:3px solid #7c3aed;padding:10px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
+        '<div style="font-size:0.7rem;color:#a78bfa;font-weight:700;margin-bottom:4px">🔍 このキーワードからわかること</div>'
+        '<div style="font-size:0.8rem;color:#d1d5db;line-height:1.55">'+reasoning+'</div>'
+        '</div>'
+        '<div style="background:#0f1a10;border-left:3px solid #34d399;padding:8px 12px;border-radius:0 10px 10px 0;margin-bottom:8px">'
+        '<div style="font-size:0.7rem;color:#34d399;font-weight:700;margin-bottom:3px">⭐ 推奨アクション</div>'
+        '<div style="font-size:0.78rem;color:#86efac;line-height:1.5">'+recommendation+'</div>'
+        '</div>'
+        '<div style="font-size:0.7rem;color:#4b5563">📊 '+past_info+'</div>'
+        '</div>'
+    )
 
 def _target_cards(targets, prefix):
     if not targets:
@@ -66,6 +195,8 @@ def generate_html(r):
     weekdays=r.get("weekdays",[])
     clusters=r.get("clusters",{})
     kw_acc=r.get("keyword_accuracy",[])
+    x_posts_raw=r.get("x_posts_raw",[])
+    cluster_freq=r.get("cluster_frequency",{})
     j_sum=r.get("juggler_summary",{})
     j_mw=r.get("juggler_model_win",[])
     j_reg=r.get("juggler_reg_ranking",[])
@@ -82,10 +213,8 @@ def generate_html(r):
     machine_rows="".join("<tr><td>"+m.get("台番号","")+"</td><td>"+m.get("機種名","")+"</td><td>"+str(m.get("高設定候補回数",""))+"</td><td>"+m.get("期待度","")+"</td></tr>" for m in machines[:15])
     suffix_rows="".join("<tr><td>末尾"+s.get("末尾","")+"</td><td>"+s.get("高設定候補率_推定","")+"</td><td>"+s.get("期待度","")+"</td></tr>" for s in suffixes)
     weekday_rows="".join("<tr><td>"+w.get("曜日","")+"曜</td><td>"+w.get("高設定候補率_推定","")+"</td><td>"+w.get("期待度","")+"</td></tr>" for w in weekdays)
-    cluster_items=""
-    for kind,items in clusters.items():
-        for c in items[:3]:
-            cluster_items+='<div class="ci"><span class="badge purple">'+kind+'</span> '+c.get("日付","")+" "+c.get("機種名","")+" "+c.get("台番号","")+"</div>"
+    cluster_cards=_cluster_cards(clusters, cluster_freq)
+    xkw_cards=_xkw_cards(x_posts_raw, kw_acc)
     acc_rows="".join("<tr><td>"+a.get("キーワード","")+"</td><td>"+a.get("的中率_推定","")+"</td><td>"+str(a.get("合計",""))+"回</td><td>"+a.get("信頼度","")+"</td></tr>" for a in kw_acc[:10])
     j_sum_rows="".join('<tr><td class="k">'+k+'</td><td class="v">'+str(v)+'</td></tr>' for k,v in j_sum.items() if k!="免責")
     j_mw_rows="".join("<tr><td>"+m.get("機種名","")+"</td><td>"+str(m.get("設置台数",""))+"</td><td>"+m.get("勝率_推定","")+"</td><td>"+str(m.get("プラス台数",""))+"</td><td>"+str(m.get("マイナス台数",""))+"</td><td>"+str(m.get("総差枚",""))+"</td><td>"+m.get("累計REG確率","")+"</td><td>"+m.get("期待度","")+"</td></tr>" for m in j_mw[:12])
@@ -255,9 +384,8 @@ def generate_html(r):
 
         '<div class="subsec" id="ai-xkw" style="display:none">\n'
         '<section class="sec ai">\n'
-        '  <div class="sec-title">🐦 X示唆キーワード</div>\n'
-        '  <table class="tbl"><thead><tr><th>キーワード</th><th>的中率</th><th>回数</th><th>信頼度</th></tr></thead>\n'
-        '  <tbody>'+(acc_rows or '<tr><td colspan=4 class="empty">照合データ蓄積中</td></tr>')+'</tbody></table>\n'
+        '  <div class="sec-title">🐦 X示唆キーワード<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 根拠・推論付き</span></div>\n'
+        '  '+xkw_cards+'\n'
         '</section></div>\n'
 
         '<div class="subsec" id="ai-acc" style="display:none">\n'
@@ -308,8 +436,8 @@ def generate_html(r):
 
         '<div class="subsec" id="sm-clus" style="display:none">\n'
         '<section class="sec sm">\n'
-        '  <div class="sec-title">🔗 並び分析</div>\n'
-        '  '+(cluster_items or '<div class="empty">並びパターンなし</div>')+'\n'
+        '  <div class="sec-title">🔗 並び分析<span style="font-size:0.72rem;color:#6b7280;font-weight:400"> 推測・活用方法付き</span></div>\n'
+        '  '+cluster_cards+'\n'
         '</section></div>\n'
 
         '<div class="subsec" id="sm-wd" style="display:none">\n'
