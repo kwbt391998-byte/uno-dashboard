@@ -81,6 +81,7 @@ def load_csv(path, cfg):
                 "ジャグラー系":is_juggler,"勝利フラグ":bool(diff and diff>0),
                 "高設定候補フラグ":score>=cfg.hi_set_min_conditions,
                 "高設定候補スコア":score,"高設定候補根拠":",".join(reasons),
+                "差枚":diff,"G数":games,
                 "出玉効率":efficiency,
                 "BB確率推定":round(games/bb,1) if bb and games and bb>0 else None,
                 "RB確率推定":round(games/rb,1) if rb and games and rb>0 else None,

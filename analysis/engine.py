@@ -40,15 +40,51 @@ def store_summary(df):
 
 def model_analysis(df):
     if df.empty or "機種名" not in df.columns: return []
-    g=df.groupby("機種名").agg(
-        集計台数=("台番号","count"),勝率=("勝利フラグ","mean"),
-        高設定候補率=("高設定候補フラグ","mean"),高設定候補台数=("高設定候補フラグ","sum"),
+    # ユニーク台番号ベースで集計（日数倍にならないよう）
+    pm=df.groupby(["機種名","台番号"]).agg(
+        高設定候補フラグ=("高設定候補フラグ","any"),
         平均出玉効率=("出玉効率","mean")).reset_index()
+    g=pm.groupby("機種名").agg(
+        設置台数=("台番号","nunique"),
+        高設定候補台数=("高設定候補フラグ","sum"),
+        高設定候補率=("高設定候補フラグ","mean"),
+        平均出玉効率=("平均出玉効率","mean")).reset_index()
+    win=df.groupby("機種名")["勝利フラグ"].mean().reset_index().rename(columns={"勝利フラグ":"勝率"})
+    g=g.merge(win,on="機種名",how="left")
     g["勝率_推定"]=(g["勝率"]*100).round(1).astype(str)+"%"
     g["高設定候補率_推定"]=(g["高設定候補率"]*100).round(1).astype(str)+"%"
     g["期待度"]=(g["高設定候補率"]*100).apply(stars)
     g["高設定候補台数"]=g["高設定候補台数"].astype(int)
-    return g.drop(columns=["勝率","高設定候補率"]).sort_values("高設定候補台数",ascending=False).to_dict("records")
+    return g.rename(columns={"設置台数":"集計台数"}).drop(columns=["勝率","高設定候補率"]).sort_values("高設定候補台数",ascending=False).to_dict("records")
+
+def model_win_analysis(df):
+    """機種別勝率分析（累計差枚ベース）"""
+    if df.empty or "機種名" not in df.columns: return []
+    # 台番号ごとに累計差枚を集計
+    pm=df.groupby(["機種名","台番号"]).agg(
+        累計差枚=("差枚","sum"),
+        高設定候補フラグ=("高設定候補フラグ","any"),
+        平均G数=("G数","mean")).reset_index()
+    pm["プラス"]=(pm["累計差枚"]>0).astype(int)
+    pm["マイナス"]=(pm["累計差枚"]<=0).astype(int)
+    g=pm.groupby("機種名").agg(
+        設置台数=("台番号","nunique"),
+        総差枚=("累計差枚","sum"),
+        平均差枚=("累計差枚","mean"),
+        プラス台数=("プラス","sum"),
+        マイナス台数=("マイナス","sum"),
+        高設定候補率=("高設定候補フラグ","mean"),
+        平均G数=("平均G数","mean")).reset_index()
+    g["勝率数値"]=(g["プラス台数"]/g["設置台数"]*100).round(1)
+    g["勝率_推定"]=g["勝率数値"].astype(str)+"%"
+    g["高設定候補率_推定"]=(g["高設定候補率"]*100).round(1).astype(str)+"%"
+    g["総差枚"]=g["総差枚"].fillna(0).round(0).astype(int)
+    g["平均差枚"]=g["平均差枚"].fillna(0).round(0).astype(int)
+    g["プラス台数"]=g["プラス台数"].astype(int)
+    g["マイナス台数"]=g["マイナス台数"].astype(int)
+    g["平均G数"]=g["平均G数"].fillna(0).round(0).astype(int)
+    g["期待度"]=g["勝率数値"].apply(stars)
+    return g.sort_values("勝率数値",ascending=False).drop(columns=["高設定候補率","勝率数値"]).to_dict("records")
 
 def machine_analysis(df):
     if df.empty: return []
@@ -241,7 +277,7 @@ def run(records, x_posts, cfg):
     result={
         "hall":cfg.name,"generated_at":datetime.now().isoformat(),
         "disclaimer":DISCLAIMER,
-        "store":store_summary(df),"models":model_analysis(df),
+        "store":store_summary(df),"models":model_analysis(df),"model_wins":model_win_analysis(df),
         "machines":machine_analysis(df),"suffixes":suffix_analysis(df),
         "clusters":cluster_analysis(df),"weekdays":weekday_analysis(df),
         "events":event_analysis(df,cfg),"new_machines":new_machine_analysis(df),

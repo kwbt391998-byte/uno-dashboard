@@ -11,6 +11,7 @@ SHEETS = {
     "today":"⭐ 今日の狙い","store":"🏪 店舗全体","model":"🎰 機種別",
     "machine":"🔢 台番号別","suffix":"🔢 末尾別","cluster":"🔗 並び分析",
     "weekday":"📅 曜日別","event":"🎉 イベント日","new":"🆕 新台",
+    "model_win":"🏆 機種別勝率",
     "x_kw":"🐦 X示唆KW","matches":"🎯 示唆照合","accuracy":"📈 的中率",
     "log":"📝 実行ログ","guide":"📖 使い方",
 }
@@ -81,6 +82,7 @@ def push(spreadsheet_id, analysis, x_posts, sa_file="service_account.json"):
     store=analysis.get("store",{})
     _write(ws["store"],[["項目","値"]]+[[k,str(v)] for k,v in store.items()])
     _write(ws["model"],_dict_rows(analysis.get("models",[])))
+    _write(ws["model_win"],_dict_rows(analysis.get("model_wins",[])))
     _write(ws["machine"],_dict_rows(analysis.get("machines",[])))
     _write(ws["suffix"],_dict_rows(analysis.get("suffixes",[])))
     _write(ws["weekday"],_dict_rows(analysis.get("weekdays",[])))

@@ -21,6 +21,7 @@ def generate_html(r):
     targets=r.get("today_targets",[])
     store=r.get("store",{})
     models=r.get("models",[])
+    model_wins=r.get("model_wins",[])
     machines=r.get("machines",[])
     suffixes=r.get("suffixes",[])
     weekdays=r.get("weekdays",[])
@@ -65,6 +66,9 @@ def generate_html(r):
         for c in items[:3]:
             cluster_items+='<div class="ci"><span class="badge purple">'+kind+'</span> '+c.get("日付","")+" "+c.get("機種名","")+" "+c.get("台番号","")+"</div>"
     acc_rows="".join("<tr><td>"+a.get("キーワード","")+"</td><td>"+a.get("的中率_推定","")+"</td><td>"+str(a.get("合計",""))+"回</td><td>"+a.get("信頼度","")+"</td></tr>" for a in kw_acc[:10])
+    model_win_rows="".join(
+        "<tr><td>"+m.get("機種名","")+"</td><td>"+str(m.get("設置台数",""))+"</td><td>"+m.get("勝率_推定","")+"</td><td>"+str(m.get("プラス台数",""))+"</td><td>"+str(m.get("マイナス台数",""))+"</td><td>"+str(m.get("総差枚",""))+"</td><td>"+str(m.get("平均差枚",""))+"</td><td>"+str(m.get("平均G数",""))+"</td><td>"+m.get("期待度","")+"</td></tr>"
+        for m in model_wins)
 
     disclaimer=r.get("disclaimer","")
 
@@ -147,6 +151,7 @@ secs.forEach(function(s){
         '  <a href="#today" class="active">⭐ 今日の狙い</a>\n'
         '  <a href="#store">🏪 店舗全体</a>\n'
         '  <a href="#model">🎰 機種別</a>\n'
+        '  <a href="#model_win">🏆 機種別勝率</a>\n'
         '  <a href="#machine">🔢 台番号</a>\n'
         '  <a href="#suffix">🔢 末尾</a>\n'
         '  <a href="#cluster">🔗 並び</a>\n'
@@ -165,6 +170,11 @@ secs.forEach(function(s){
         '  <div class="sec-title">🎰 機種別ランキング</div>\n'
         '  <table class="tbl"><thead><tr><th>機種名</th><th>高設定候補率</th><th>期待度</th><th>勝率</th></tr></thead>\n'
         '  <tbody>' + (model_rows or no_data_4) + '</tbody></table>\n'
+        '</section>\n'
+        '<section class="sec" id="model_win">\n'
+        '  <div class="sec-title">🏆 機種別勝率 <span style="font-size:0.75rem;color:#6b7280;font-weight:400">（累計差枚ベース）</span></div>\n'
+        '  <table class="tbl"><thead><tr><th>機種名</th><th>設置台数</th><th>勝率</th><th>+台数</th><th>-台数</th><th>総差枚</th><th>平均差枚</th><th>平均G数</th><th>期待度</th></tr></thead>\n'
+        '  <tbody>' + (model_win_rows or '<tr><td colspan=9 class="empty">データなし</td></tr>') + '</tbody></table>\n'
         '</section>\n'
         '<section class="sec" id="machine">\n'
         '  <div class="sec-title">🔢 台番号別ランキング</div>\n'
