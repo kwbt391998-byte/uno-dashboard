@@ -1,0 +1,22 @@
+# 機密情報
+service_account.json
+*.env
+.env
+
+# 実行ログ（自動生成）
+logs/run_*.log
+logs/structured_*.json
+
+# 本番データ（GitHubに上げない）
+data/yuurakucho_uno/*.csv
+data/yuurakucho_uno/x_posts/*.csv
+!data/yuurakucho_uno/sample_data.csv
+!data/yuurakucho_uno/x_posts/sample_posts.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
