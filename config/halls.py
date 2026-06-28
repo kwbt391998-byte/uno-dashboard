@@ -11,6 +11,17 @@ class HallConfig:
     x_username: Optional[str]
     anaslo_url: Optional[str]
     data_dir: str
+    # ジャグラー専用高設定候補ロジック
+    juggler_hi_min_games: int = 5000
+    juggler_hi_max_reg: float = 250.0
+    juggler_hi_max_combined: float = 130.0
+    juggler_hi_max_bb_rb: float = 2.5
+    juggler_hi_min_score: int = 3
+    # スマスロ専用高設定候補ロジック
+    sumasuro_hi_min_diff: int = 1000
+    sumasuro_hi_min_games: int = 5000
+    sumasuro_hi_min_score: int = 2
+    # 旧フィールド（互換性維持）
     hi_set_min_games: int = 5000
     hi_set_min_diff: int = 1000
     hi_set_min_conditions: int = 2
@@ -18,7 +29,7 @@ class HallConfig:
     event_days: list = field(default_factory=list)
     event_label: str = ""
     juggler_keywords: list = field(default_factory=lambda: [
-        "マイジャグ","アイムジャグ","ファンキー","ゴーゴー","ジャグラー"
+        "マイジャグ","アイムジャグ","ファンキー","ゴーゴー","ジャグラー","ハッピー","ミスター"
     ])
 
 HALLS = {

@@ -67,24 +67,35 @@ def load_csv(path, cfg):
             day_num=int(date_str.split('-')[2])
             is_event=day_num in cfg.event_days
             is_juggler=any(k in model for k in cfg.juggler_keywords)
-            score=0; reasons=[]
-            if games and games>=cfg.hi_set_min_games: score+=1; reasons.append(f"{games}G")
-            if diff and diff>=cfg.hi_set_min_diff: score+=1; reasons.append(f"+{diff}枚")
-            if combined and combined<=130: score+=1; reasons.append(f"合算1/{combined:.0f}")
-            if is_juggler and rb and games and rb>0:
-                reg=games/rb
-                if reg<=cfg.juggler_reg_threshold: score+=1; reasons.append(f"REG1/{reg:.0f}")
             efficiency=round(diff/games,4) if diff is not None and games and games>0 else None
+            bb_rb_ratio=round(bb/rb,2) if bb and rb and rb>0 else None
+            reg_prob=round(games/rb,1) if rb and games and rb>0 else None
+            # ジャグラー専用スコアリング（REG・合算重視）
+            if is_juggler:
+                score=0; reasons=[]
+                if games and games>=cfg.juggler_hi_min_games: score+=1; reasons.append(f"{games}G")
+                if reg_prob and reg_prob<=cfg.juggler_hi_max_reg: score+=2; reasons.append(f"REG1/{reg_prob:.0f}")
+                if combined and combined<=cfg.juggler_hi_max_combined: score+=1; reasons.append(f"合算1/{combined:.0f}")
+                if diff and diff>0: score+=1; reasons.append(f"+{diff}枚")
+                if bb_rb_ratio and bb_rb_ratio<=cfg.juggler_hi_max_bb_rb: score+=1; reasons.append(f"BB/REG={bb_rb_ratio:.1f}")
+                hi_flag=score>=cfg.juggler_hi_min_score
+            else:
+                # スマスロ専用スコアリング（差枚・G数重視）
+                score=0; reasons=[]
+                if games and games>=cfg.sumasuro_hi_min_games: score+=1; reasons.append(f"{games}G")
+                if diff and diff>=cfg.sumasuro_hi_min_diff: score+=2; reasons.append(f"+{diff}枚")
+                if combined and combined<=130: score+=1; reasons.append(f"合算1/{combined:.0f}")
+                hi_flag=score>=cfg.sumasuro_hi_min_score
             records.append({
                 "日付":date_str,"曜日":weekday_jp,"イベント日":is_event,
                 "機種名":model,"台番号":mno_raw,"台番号数値":mno_num,"末尾":tail,
                 "ジャグラー系":is_juggler,"勝利フラグ":bool(diff and diff>0),
-                "高設定候補フラグ":score>=cfg.hi_set_min_conditions,
+                "高設定候補フラグ":hi_flag,
                 "高設定候補スコア":score,"高設定候補根拠":",".join(reasons),
-                "差枚":diff,"G数":games,
-                "出玉効率":efficiency,
+                "差枚":diff,"G数":games,"BB":bb,"RB":rb,"合算推定":combined,
+                "出玉効率":efficiency,"BB_RB比率":bb_rb_ratio,
                 "BB確率推定":round(games/bb,1) if bb and games and bb>0 else None,
-                "RB確率推定":round(games/rb,1) if rb and games and rb>0 else None,
+                "RB確率推定":reg_prob,
                 "ホール":cfg.name,
             })
         except Exception as e: logger.debug(f"行スキップ: {e}")
